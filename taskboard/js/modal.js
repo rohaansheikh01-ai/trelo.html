@@ -83,8 +83,9 @@ function initModal() {
     state.lists.forEach(l => {
       l.cards = l.cards.filter(c => c.id !== cardId);
     });
-    saveState(state);
+    try { saveState(state); } catch (_) {}
     renderBoard(state);
+    if (typeof applyFilter === 'function') applyFilter();
     close();
     announce('Card deleted.');
   });
@@ -126,8 +127,9 @@ function initModal() {
       card.checklist.push({ text: lbl.textContent.trim(), done: cb.checked });
     });
 
-    saveState(state);
+    try { saveState(state); } catch (_) {}
     renderBoard(state);
+    if (typeof applyFilter === 'function') applyFilter();
     close();
     announce(`Card "${title}" saved.`);
   });

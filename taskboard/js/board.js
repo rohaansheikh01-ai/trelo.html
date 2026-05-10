@@ -63,6 +63,90 @@ function buildCardEl(card) {
 }
 
 
+function startRename(listEl, list) {
+  const titleEl = listEl.querySelector('.list-title');
+  if (!titleEl) return;
+
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.className = 'list-title-input';
+  inp.value = list.title;
+  inp.maxLength = 100;
+  titleEl.replaceWith(inp);
+  inp.focus();
+  inp.select();
+
+  const commit = () => {
+    const newTitle = inp.value.trim() || list.title;
+    list.title = newTitle;
+    listEl.querySelector('.list-cards').setAttribute('aria-label', newTitle + ' cards');
+    const state = window._tbState;
+    try { saveState(state); } catch (_) {}
+    const h2 = document.createElement('h2');
+    h2.className = 'list-title';
+    h2.tabIndex = 0;
+    h2.textContent = newTitle;
+    inp.replaceWith(h2);
+    announce(`List renamed to "${newTitle}".`);
+  };
+
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); inp.blur(); }
+    if (e.key === 'Escape') { inp.value = list.title; inp.blur(); }
+  });
+}
+
+function wireListMenu(listEl, list) {
+  const menuBtn = listEl.querySelector('.btn-list-menu');
+  const header  = listEl.querySelector('.list-header');
+
+  menuBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    document.querySelectorAll('.list-menu').forEach(m => m.remove());
+
+    const menu = document.createElement('div');
+    menu.className = 'list-menu';
+
+    const renameItem = document.createElement('button');
+    renameItem.type = 'button';
+    renameItem.className = 'list-menu-item';
+    renameItem.textContent = 'Rename list';
+
+    const deleteItem = document.createElement('button');
+    deleteItem.type = 'button';
+    deleteItem.className = 'list-menu-item list-menu-danger';
+    deleteItem.textContent = 'Delete list';
+
+    renameItem.addEventListener('click', () => {
+      menu.remove();
+      startRename(listEl, list);
+    });
+
+    deleteItem.addEventListener('click', () => {
+      menu.remove();
+      const state = window._tbState;
+      state.lists = state.lists.filter(l => l.id !== list.id);
+      try { saveState(state); } catch (_) {}
+      renderBoard(state);
+      if (typeof applyFilter === 'function') applyFilter();
+      announce(`List "${list.title}" deleted.`);
+    });
+
+    menu.appendChild(renameItem);
+    menu.appendChild(deleteItem);
+    header.appendChild(menu);
+
+    const closeMenu = ev => {
+      if (!menu.contains(ev.target)) {
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+      }
+    };
+    document.addEventListener('click', closeMenu);
+  });
+}
+
 function wireAddCard(listEl, list) {
   const addBtn = listEl.querySelector('.btn-add-card');
 
@@ -159,6 +243,7 @@ function buildListEl(list) {
   );
 
   wireAddCard(sec, list);
+  wireListMenu(sec, list);
   return sec;
 }
 

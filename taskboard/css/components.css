@@ -169,6 +169,10 @@
 
 
 .list-menu {
+  position: absolute;
+  top: 100%;
+  right: 4px;
+  z-index: 200;
   background: var(--bg-modal);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
