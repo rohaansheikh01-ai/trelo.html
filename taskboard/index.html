@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="TaskBoard — a Trello-style Kanban app">
+  <title>TaskBoard</title>
+  <!-- Set theme before paint to prevent flash -->
+  <script>
+    (function () {
+      const saved = localStorage.getItem('tb-theme');
+      const preferred = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', preferred);
+    }());
+  </script>
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-logo" aria-label="TaskBoard home">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <rect x="2" y="4" width="7" height="16" rx="1.5" />
+        <rect x="11" y="4" width="11" height="10" rx="1.5" />
+      </svg>
+      <span>TaskBoard</span>
+    </div>
+
+    <div class="header-center">
+      <label class="search-label" for="search-input">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input type="search" id="search-input" class="search-input" placeholder="Search cards…" autocomplete="off"
+          aria-label="Search cards by title or description">
+      </label>
+
+      <div class="filter-wrap">
+        <label for="priority-filter" class="visually-hidden">Filter by priority</label>
+        <select id="priority-filter" class="priority-select" aria-label="Filter by priority">
+          <option value="">All priorities</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+        <svg class="select-arrow" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <button id="theme-toggle" class="btn-icon" aria-label="Toggle light/dark theme">
+        <!-- Sun (shown in dark mode) -->
+        <svg class="icon-sun" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="5" />
+          <line x1="12" y1="1" x2="12" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="3" y2="12" />
+          <line x1="21" y1="12" x2="23" y2="12" />
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+        </svg>
+        <!-- Moon (shown in light mode) -->
+        <svg class="icon-moon" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- BOARD -->
+  <main id="board" class="board" role="main" aria-label="Kanban board">
+
+    <!-- Lists are rendered here by board.js -->
+
+    <div class="add-list-wrap">
+      <button id="btn-show-add-list" class="btn-add-list" aria-label="Add a new list">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+        Add a list
+      </button>
+
+      <form id="form-add-list" class="add-list-form hidden" novalidate aria-label="Add new list">
+        <label for="new-list-title" class="visually-hidden">List title</label>
+        <input type="text" id="new-list-title" class="add-list-input" placeholder="Enter list title…" required
+          minlength="1" maxlength="100" autocomplete="off" aria-required="true"
+          aria-describedby="add-list-error">
+        <span id="add-list-error" class="field-error" role="alert" aria-live="polite"></span>
+        <div class="add-list-actions">
+          <button type="submit" class="btn-primary btn-sm">Add list</button>
+          <button type="button" id="btn-cancel-add-list" class="btn-icon" aria-label="Cancel adding list"
+            style="color:var(--text-secondary)">
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <!-- CARD EDIT MODAL (native <dialog>) -->
+  <dialog id="card-modal" aria-labelledby="modal-title" aria-modal="true">
+    <form id="card-form" novalidate>
+      <div class="modal-header">
+        <h2 id="modal-title" class="modal-title">Edit Card</h2>
+        <button type="button" id="modal-close" class="btn-icon" aria-label="Close modal"
+          style="color:var(--text-secondary)">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="field-group">
+          <label for="card-title" class="field-label">
+            Title <span class="required-star" aria-hidden="true">*</span>
+          </label>
+          <input type="text" id="card-title" name="title" class="field-input" required minlength="1" maxlength="100"
+            placeholder="Card title" autocomplete="off" aria-required="true" aria-describedby="card-title-error">
+          <span id="card-title-error" class="field-error" role="alert" aria-live="polite"></span>
+        </div>
+
+        <div class="field-group">
+          <label for="card-desc" class="field-label">Description</label>
+          <textarea id="card-desc" name="description" class="field-textarea" maxlength="500" rows="3"
+            placeholder="Add a description…" autocomplete="off"></textarea>
+        </div>
+
+        <div class="field-row">
+          <div class="field-group">
+            <label for="card-due" class="field-label">Due date</label>
+            <input type="date" id="card-due" name="dueDate" class="field-input">
+          </div>
+
+          <div class="field-group">
+            <label for="card-priority" class="field-label">Priority</label>
+            <div class="select-wrap">
+              <select id="card-priority" name="priority" class="field-select">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+              <svg class="select-arrow" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="card-label" class="field-label">Label</label>
+            <input type="color" id="card-label" name="label" class="field-color" value="#0052cc"
+              aria-label="Card label color">
+          </div>
+        </div>
+
+        <fieldset class="field-group checklist-fieldset">
+          <legend class="field-label">Checklist</legend>
+          <ol id="checklist-items" class="checklist-list" aria-label="Checklist items">
+            <!-- JS appends <li class="checklist-item"> nodes cloned from #tmpl-checklist-item -->
+          </ol>
+          <div class="checklist-add-row">
+            <label for="checklist-new-item" class="visually-hidden">New checklist item</label>
+            <input type="text" id="checklist-new-item" name="checklistNewItem" class="field-input"
+              placeholder="Add an item…" maxlength="200" autocomplete="off"
+              aria-describedby="checklist-new-error">
+            <button type="button" id="btn-add-checklist-item" class="btn-secondary btn-sm">Add</button>
+          </div>
+          <span id="checklist-new-error" class="field-error" role="alert" aria-live="polite"></span>
+        </fieldset>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="btn-delete-card" class="btn-danger">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            <path d="M10 11v6" />
+            <path d="M14 11v6" />
+            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+          </svg>
+          Delete
+        </button>
+        <div class="modal-footer-right">
+          <button type="button" id="btn-cancel-modal" class="btn-secondary">Cancel</button>
+          <button type="submit" id="btn-save-card" class="btn-primary">Save</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Screen reader announcements -->
+  <div id="aria-announce" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
+
+  <!-- ═══ Templates (cloned by JS; never rendered directly) ═══════════════ -->
+
+  <!-- Per-list "Add card" inline form -->
+  <template id="tmpl-add-card-form">
+    <form class="add-card-form hidden" novalidate>
+      <label for="add-card-title" class="visually-hidden">Card title</label>
+      <input type="text" id="add-card-title" class="add-card-input"
+        placeholder="Enter a title for this card…"
+        required minlength="1" maxlength="100" autocomplete="off"
+        aria-required="true" aria-describedby="add-card-error">
+      <span id="add-card-error" class="field-error" role="alert" aria-live="polite"></span>
+      <div class="add-card-actions">
+        <button type="submit" class="btn-primary btn-sm">Add card</button>
+        <button type="button" class="btn-icon btn-cancel-add-card" aria-label="Cancel adding card">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+    </form>
+  </template>
+
+  <!-- Single checklist row cloned into #checklist-items -->
+  <template id="tmpl-checklist-item">
+    <li class="checklist-item">
+      <input type="checkbox" class="checklist-checkbox" id="" name="checklist-item">
+      <label class="checklist-item-label" for=""></label>
+      <button type="button" class="btn-icon checklist-item-remove" aria-label="Remove item">
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </li>
+  </template>
+
+  <script src="js/index.js"></script>
+</body>
+
+</html>

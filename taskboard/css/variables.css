@@ -1,0 +1,90 @@
+:root {
+  --color-neutral-50: #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
+
+  --color-primary: #0052cc;
+  --color-primary-hover: #0747a6;
+  --color-accent: #00b8d9;
+  --color-success: #36b37e;
+  --color-warning: #ff991f;
+  --color-danger: #de350b;
+
+  --bg-page: #f4f5f7;
+  --bg-header: #0052cc;
+  --bg-list: #ebecf0;
+  --bg-card: #ffffff;
+  --bg-modal: #ffffff;
+  --bg-input: #ffffff;
+
+  --text-primary: #172b4d;
+  --text-secondary: #5e6c84;
+  --text-muted: #97a0af;
+  --text-on-primary: #ffffff;
+  --text-on-header: #ffffff;
+
+  --border-color: #dfe1e6;
+  --border-focus: #0052cc;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
+
+  --shadow-sm: 0 1px 2px rgba(9,30,66,0.13);
+  --shadow-md: 0 4px 8px rgba(9,30,66,0.15);
+  --shadow-lg: 0 8px 24px rgba(9,30,66,0.20);
+
+  --font-size-xs: clamp(10px, 1.5vw, 11px);
+  --font-size-sm: clamp(12px, 1.8vw, 13px);
+  --font-size-base: clamp(13px, 2vw, 14px);
+  --font-size-md: clamp(14px, 2.2vw, 16px);
+  --font-size-lg: clamp(16px, 2.5vw, 20px);
+
+  --list-width: 280px;
+  --header-height: 48px;
+
+  --transition-fast: 120ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+}
+
+[data-theme="dark"] {
+  --bg-page: #1d2125;
+  --bg-header: #161a1d;
+  --bg-list: #282e33;
+  --bg-card: #22272b;
+  --bg-modal: #282e33;
+  --bg-input: #22272b;
+
+  --text-primary: #b6c2cf;
+  --text-secondary: #8c9bab;
+  --text-muted: #596773;
+  --text-on-primary: #ffffff;
+  --text-on-header: #b6c2cf;
+
+  --border-color: #3a4148;
+  --border-focus: #579dff;
+
+  --color-primary: #579dff;
+  --color-primary-hover: #85b8ff;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 8px rgba(0,0,0,0.45);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+}

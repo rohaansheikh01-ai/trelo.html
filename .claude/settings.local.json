@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Rohaan\\\\Desktop\\\\trello.html\" -Recurse -File)",
+      "Bash(Select-Object FullName)"
+    ]
+  }
+}
