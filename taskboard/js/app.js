@@ -1,89 +1,85 @@
-/* ── storage.js ───────────────────────────────────────────────────────────── */
-
-const STORAGE_KEY = 'tb-state';
+var STORAGE_KEY = 'tb-state';
 
 function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { lists: [] };
-  } catch {
-    return { lists: [] };
-  }
+  var raw = localStorage.getItem(STORAGE_KEY);
+  return raw ? JSON.parse(raw) : { lists: [] };    // ternary operater //
 }
 
 function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-/* ── board.js ─────────────────────────────────────────────────────────────── */
-
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
 function esc(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  var div = document.createElement('div');
+  div.textContent = String(str);
+  return div.innerHTML;
 }
 
 function formatDate(iso) {
   if (!iso) return '';
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
+  var parts = iso.split('-');
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
 }
 
 function announce(msg) {
-  const el = document.getElementById('aria-announce');
+  var el = document.getElementById('aria-announce');
   if (!el) return;
   el.textContent = '';
-  requestAnimationFrame(() => { el.textContent = msg; });
+  requestAnimationFrame(function() { el.textContent = msg; });
 }
 
+function findCard(cardId) {
+  var found = null;
+  window._tbState.lists.forEach(function(l) {
+    l.cards.forEach(function(c) { if (c.id === cardId) found = c; });
+  });
+  return found;
+}
+
+/* ── Card ── */
+
 function buildCardEl(card) {
-  const art = document.createElement('article');
+  var art = document.createElement('article');
   art.className = 'card';
   art.tabIndex = 0;
   art.setAttribute('role', 'button');
   art.setAttribute('aria-label', 'Edit card: ' + card.title);
   art.dataset.cardId = card.id;
 
-  let html = card.label
-    ? `<div class="card-label-strip" style="background:${esc(card.label)}"></div>`
-    : '';
-
-  html += `<p class="card-title">${esc(card.title)}</p>`;
+  var html = card.label ? '<div class="card-label-strip" style="background:' + esc(card.label) + '"></div>' : '';
+  html += '<p class="card-title">' + esc(card.title) + '</p>';
 
   if (card.priority || card.dueDate) {
     html += '<div class="card-meta">';
     if (card.priority) {
-      html += `<span class="card-badge priority-${esc(card.priority)}">${esc(card.priority)}</span>`;
+      html += '<span class="card-badge priority-' + esc(card.priority) + '">' + esc(card.priority) + '</span>';
     }
     if (card.dueDate) {
-      const overdue = card.dueDate < new Date().toISOString().slice(0, 10);
-      html += `<time class="card-due${overdue ? ' is-overdue' : ''}" datetime="${esc(card.dueDate)}">${formatDate(card.dueDate)}</time>`;
+      var isOverdue = card.dueDate < new Date().toISOString().slice(0, 10);
+      html += '<time class="card-due' + (isOverdue ? ' is-overdue' : '') + '" datetime="' + esc(card.dueDate) + '">' + formatDate(card.dueDate) + '</time>';
     }
     html += '</div>';
   }
 
   art.innerHTML = html;
-
-  const open = () => openCardModal(card.id);
-  art.addEventListener('click', open);
-  art.addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+  art.addEventListener('click', function() { openCardModal(card.id); });
+  art.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCardModal(card.id); }
   });
-
   return art;
 }
 
+/* ── List ── */
+
 function startRename(listEl, list) {
-  const titleEl = listEl.querySelector('.list-title');
+  var titleEl = listEl.querySelector('.list-title');
   if (!titleEl) return;
 
-  const inp = document.createElement('input');
+  var inp = document.createElement('input');
   inp.type = 'text';
   inp.className = 'list-title-input';
   inp.value = list.title;
@@ -92,90 +88,89 @@ function startRename(listEl, list) {
   inp.focus();
   inp.select();
 
-  const commit = () => {
-    const newTitle = inp.value.trim() || list.title;
+  function commit() {
+    var newTitle = inp.value.trim() || list.title;
     list.title = newTitle;
     listEl.querySelector('.list-cards').setAttribute('aria-label', newTitle + ' cards');
-    const state = window._tbState;
-    try { saveState(state); } catch (_) {}
-    const h2 = document.createElement('h2');
+    saveState(window._tbState);
+    var h2 = document.createElement('h2');
     h2.className = 'list-title';
     h2.tabIndex = 0;
     h2.textContent = newTitle;
     inp.replaceWith(h2);
-    announce(`List renamed to "${newTitle}".`);
-  };
+    announce('List renamed to "' + newTitle + '".');
+  }
 
   inp.addEventListener('blur', commit);
-  inp.addEventListener('keydown', e => {
-    if (e.key === 'Enter')  { e.preventDefault(); inp.blur(); }
+  inp.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
     if (e.key === 'Escape') { inp.value = list.title; inp.blur(); }
   });
 }
 
 function wireListMenu(listEl, list) {
-  const menuBtn = listEl.querySelector('.btn-list-menu');
-  const header  = listEl.querySelector('.list-header');
+  var menuBtn = listEl.querySelector('.btn-list-menu');
+  var header  = listEl.querySelector('.list-header');
 
-  menuBtn.addEventListener('click', e => {
+  menuBtn.addEventListener('click', function(e) {
     e.stopPropagation();
-    document.querySelectorAll('.list-menu').forEach(m => m.remove());
+    document.querySelectorAll('.list-menu').forEach(function(m) { m.remove(); });
 
-    const menu = document.createElement('div');
+    var menu       = document.createElement('div');
     menu.className = 'list-menu';
 
-    const renameItem = document.createElement('button');
+    var renameItem = document.createElement('button');
     renameItem.type = 'button';
     renameItem.className = 'list-menu-item';
     renameItem.textContent = 'Rename list';
 
-    const deleteItem = document.createElement('button');
+    var deleteItem = document.createElement('button');
     deleteItem.type = 'button';
     deleteItem.className = 'list-menu-item list-menu-danger';
     deleteItem.textContent = 'Delete list';
 
-    renameItem.addEventListener('click', () => {
+    renameItem.addEventListener('click', function() {
       menu.remove();
       startRename(listEl, list);
     });
 
-    deleteItem.addEventListener('click', () => {
+    deleteItem.addEventListener('click', function() {
       menu.remove();
-      const state = window._tbState;
-      state.lists = state.lists.filter(l => l.id !== list.id);
-      try { saveState(state); } catch (_) {}
+      var state = window._tbState;
+      state.lists = state.lists.filter(function(l) { return l.id !== list.id; });
+      saveState(state);
       renderBoard(state);
       if (typeof applyFilter === 'function') applyFilter();
-      announce(`List "${list.title}" deleted.`);
+      announce('List "' + list.title + '" deleted.');
     });
 
     menu.appendChild(renameItem);
     menu.appendChild(deleteItem);
     header.appendChild(menu);
 
-    const closeMenu = ev => {
+    function closeMenu(ev) {
       if (!menu.contains(ev.target)) {
         menu.remove();
         document.removeEventListener('click', closeMenu);
       }
-    };
+    }
     document.addEventListener('click', closeMenu);
   });
 }
 
 function wireAddCard(listEl, list) {
-  const addBtn = listEl.querySelector('.btn-add-card');
+  var addBtn = listEl.querySelector('.btn-add-card');
 
-  addBtn.addEventListener('click', () => {
+  addBtn.addEventListener('click', function() {
     if (listEl.querySelector('.add-card-form')) return;
 
-    const frag = document.getElementById('tmpl-add-card-form').content.cloneNode(true);
-    const form = frag.querySelector('form');
+    var frag = document.getElementById('tmpl-add-card-form').content.cloneNode(true);
+    var form = frag.querySelector('form');
+    var inp  = frag.querySelector('input[type="text"]');
+    var err  = frag.querySelector('.field-error');
 
-    const inp = frag.querySelector('input[type="text"]');
-    const err = frag.querySelector('.field-error');
-    inp.id = `act-${list.id}`;
-    err.id = `ace-${list.id}`;
+    inp.id = 'act-' + list.id;
+    err.id = 'ace-' + list.id;
     inp.setAttribute('aria-describedby', err.id);
     frag.querySelector('label').setAttribute('for', inp.id);
     form.classList.remove('hidden');
@@ -184,24 +179,23 @@ function wireAddCard(listEl, list) {
     addBtn.classList.add('hidden');
     addBtn.setAttribute('aria-expanded', 'true');
 
-    const liveForm = listEl.querySelector('.add-card-form');
-    const liveInp  = liveForm.querySelector('input[type="text"]');
-    const liveErr  = liveForm.querySelector('.field-error');
-
+    var liveForm = listEl.querySelector('.add-card-form');
+    var liveInp  = liveForm.querySelector('input[type="text"]');
+    var liveErr  = liveForm.querySelector('.field-error');
     liveInp.focus();
 
-    const close = () => {
+    function close() {
       liveForm.remove();
       addBtn.classList.remove('hidden');
       addBtn.setAttribute('aria-expanded', 'false');
-    };
+    }
 
     liveForm.querySelector('.btn-cancel-add-card').addEventListener('click', close);
-    liveForm.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    liveForm.addEventListener('keydown', function(e) { if (e.key === 'Escape') close(); });
 
-    liveForm.addEventListener('submit', e => {
+    liveForm.addEventListener('submit', function(e) {
       e.preventDefault();
-      const title = liveInp.value.trim();
+      var title = liveInp.value.trim();
       if (!title) {
         liveErr.textContent = 'Title is required.';
         liveInp.classList.add('is-invalid');
@@ -210,24 +204,19 @@ function wireAddCard(listEl, list) {
       }
       liveErr.textContent = '';
       liveInp.classList.remove('is-invalid');
-
-      const card = {
-        id: uid(), title,
-        description: '', dueDate: '', priority: 'medium', label: '', checklist: []
-      };
+      var card = { id: uid(), title: title, description: '', dueDate: '', priority: 'medium', label: '', checklist: [] };
       list.cards.push(card);
       saveState(window._tbState);
-
       listEl.querySelector('.list-cards').appendChild(buildCardEl(card));
       liveInp.value = '';
       liveInp.focus();
-      announce(`Card "${title}" added.`);
+      announce('Card "' + title + '" added.');
     });
   });
 }
 
 function buildListEl(list) {
-  const sec = document.createElement('section');
+  var sec = document.createElement('section');
   sec.className = 'list';
   sec.dataset.listId = list.id;
 
@@ -252,9 +241,8 @@ function buildListEl(list) {
       Add a card
     </button>`;
 
-  list.cards.forEach(c =>
-    sec.querySelector('.list-cards').appendChild(buildCardEl(c))
-  );
+  var cardsContainer = sec.querySelector('.list-cards');
+  list.cards.forEach(function(c) { cardsContainer.appendChild(buildCardEl(c)); });
 
   wireAddCard(sec, list);
   wireListMenu(sec, list);
@@ -263,43 +251,43 @@ function buildListEl(list) {
 
 function renderBoard(state) {
   window._tbState = state;
-  const board = document.getElementById('board');
-  const wrap  = board.querySelector('.add-list-wrap');
-  board.querySelectorAll('.list').forEach(l => l.remove());
-  state.lists.forEach(list => board.insertBefore(buildListEl(list), wrap));
+  var board = document.getElementById('board');
+  var wrap  = board.querySelector('.add-list-wrap');
+  board.querySelectorAll('.list').forEach(function(l) { l.remove(); });
+  state.lists.forEach(function(list) { board.insertBefore(buildListEl(list), wrap); });
 }
 
 function initAddListForm() {
-  const showBtn   = document.getElementById('btn-show-add-list');
-  const form      = document.getElementById('form-add-list');
-  const cancelBtn = document.getElementById('btn-cancel-add-list');
-  const inp       = document.getElementById('new-list-title');
-  const err       = document.getElementById('add-list-error');
+  var showBtn   = document.getElementById('btn-show-add-list');
+  var form      = document.getElementById('form-add-list');
+  var cancelBtn = document.getElementById('btn-cancel-add-list');
+  var inp       = document.getElementById('new-list-title');
+  var err       = document.getElementById('add-list-error');
 
-  const open = () => {
+  function open() {
     showBtn.classList.add('hidden');
     form.classList.remove('hidden');
     inp.value = '';
     err.textContent = '';
     inp.classList.remove('is-invalid');
     inp.focus();
-  };
+  }
 
-  const close = () => {
+  function close() {
     form.classList.add('hidden');
     showBtn.classList.remove('hidden');
     err.textContent = '';
     inp.classList.remove('is-invalid');
     showBtn.focus();
-  };
+  }
 
   showBtn.addEventListener('click', open);
   cancelBtn.addEventListener('click', close);
-  form.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  form.addEventListener('keydown', function(e) { if (e.key === 'Escape') close(); });
 
-  form.addEventListener('submit', e => {
+  form.addEventListener('submit', function(e) {
     e.preventDefault();
-    const title = inp.value.trim();
+    var title = inp.value.trim();
     if (!title) {
       err.textContent = 'List title is required.';
       inp.classList.add('is-invalid');
@@ -308,46 +296,38 @@ function initAddListForm() {
     }
     err.textContent = '';
     inp.classList.remove('is-invalid');
-
-    const state = window._tbState;
-    state.lists.push({ id: uid(), title, cards: [] });
+    var state = window._tbState;
+    state.lists.push({ id: uid(), title: title, cards: [] });
     saveState(state);
     renderBoard(state);
     close();
-    announce(`List "${title}" added.`);
+    announce('List "' + title + '" added.');
   });
 }
 
-/* ── modal.js ─────────────────────────────────────────────────────────────── */
+/* ── Modal ── */
 
 function addChecklistItem(text, done) {
-  const frag = document.getElementById('tmpl-checklist-item').content.cloneNode(true);
-  const li   = frag.querySelector('li');
-  const cb   = frag.querySelector('.checklist-checkbox');
-  const lbl  = frag.querySelector('.checklist-item-label');
-  const del  = frag.querySelector('.checklist-item-remove');
+  var frag = document.getElementById('tmpl-checklist-item').content.cloneNode(true);
+  var li   = frag.querySelector('li');
+  var cb   = frag.querySelector('.checklist-checkbox');
+  var lbl  = frag.querySelector('.checklist-item-label');
+  var del  = frag.querySelector('.checklist-item-remove');
 
-  const id = 'chk-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  var id = 'chk-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
   cb.id = id;
   cb.checked = !!done;
   lbl.setAttribute('for', id);
   lbl.textContent = text;
-
-  del.addEventListener('click', () => li.remove());
-
+  del.addEventListener('click', function() { li.remove(); });
   document.getElementById('checklist-items').appendChild(frag);
 }
 
 function openCardModal(cardId) {
-  const state = window._tbState;
-  let card = null;
-  state.lists.forEach(l => {
-    const found = l.cards.find(c => c.id === cardId);
-    if (found) card = found;
-  });
+  var card = findCard(cardId);
   if (!card) return;
 
-  const modal = document.getElementById('card-modal');
+  var modal = document.getElementById('card-modal');
   modal.dataset.cardId = cardId;
   modal._opener = document.activeElement;
 
@@ -360,65 +340,55 @@ function openCardModal(cardId) {
   document.getElementById('card-title-error').textContent = '';
   document.getElementById('card-title').classList.remove('is-invalid');
 
-  const listEl = document.getElementById('checklist-items');
-  listEl.innerHTML = '';
-  (card.checklist || []).forEach(item => addChecklistItem(item.text, item.done));
+  var checklistEl = document.getElementById('checklist-items');
+  checklistEl.innerHTML = '';
+  (card.checklist || []).forEach(function(item) { addChecklistItem(item.text, item.done); });
 
   modal.showModal();
   document.getElementById('card-title').focus();
 }
 
 function initModal() {
-  const modal      = document.getElementById('card-modal');
-  const closeBtn   = document.getElementById('modal-close');
-  const cancelBtn  = document.getElementById('btn-cancel-modal');
-  const deleteBtn  = document.getElementById('btn-delete-card');
-  const form       = document.getElementById('card-form');
-  const addItemBtn = document.getElementById('btn-add-checklist-item');
-  const newItemInp = document.getElementById('checklist-new-item');
-  const newItemErr = document.getElementById('checklist-new-error');
+  var modal      = document.getElementById('card-modal');
+  var form       = document.getElementById('card-form');
+  var addItemBtn = document.getElementById('btn-add-checklist-item');
+  var newItemInp = document.getElementById('checklist-new-item');
+  var newItemErr = document.getElementById('checklist-new-error');
 
-  const close = () => {
+  function close() {
     modal.close();
     if (modal._opener && modal._opener.focus) {
       modal._opener.focus();
       modal._opener = null;
     }
-  };
+  }
 
-  closeBtn.addEventListener('click', close);
-  cancelBtn.addEventListener('click', close);
+  document.getElementById('modal-close').addEventListener('click', close);
+  document.getElementById('btn-cancel-modal').addEventListener('click', close);
+  modal.addEventListener('click', function(e) { if (e.target === modal) close(); });
 
-  modal.addEventListener('click', e => { if (e.target === modal) close(); });
-
-  deleteBtn.addEventListener('click', () => {
-    const cardId = modal.dataset.cardId;
+  document.getElementById('btn-delete-card').addEventListener('click', function() {
+    var cardId = modal.dataset.cardId;
     if (!cardId) return;
-    const state = window._tbState;
-    state.lists.forEach(l => {
-      l.cards = l.cards.filter(c => c.id !== cardId);
+    var state = window._tbState;
+    state.lists.forEach(function(l) {
+      l.cards = l.cards.filter(function(c) { return c.id !== cardId; });
     });
-    try { saveState(state); } catch (_) {}
+    saveState(state);
     renderBoard(state);
     if (typeof applyFilter === 'function') applyFilter();
     close();
     announce('Card deleted.');
   });
 
-  form.addEventListener('submit', e => {
+  form.addEventListener('submit', function(e) {
     e.preventDefault();
-    const cardId = modal.dataset.cardId;
-    const state  = window._tbState;
-    let card = null;
-    state.lists.forEach(l => {
-      const found = l.cards.find(c => c.id === cardId);
-      if (found) card = found;
-    });
+    var card = findCard(modal.dataset.cardId);
     if (!card) return;
 
-    const titleInp = document.getElementById('card-title');
-    const titleErr = document.getElementById('card-title-error');
-    const title = titleInp.value.trim();
+    var titleInp = document.getElementById('card-title');
+    var titleErr = document.getElementById('card-title-error');
+    var title    = titleInp.value.trim();
 
     if (!title) {
       titleErr.textContent = 'Title is required.';
@@ -426,6 +396,7 @@ function initModal() {
       titleInp.focus();
       return;
     }
+
     titleErr.textContent = '';
     titleInp.classList.remove('is-invalid');
 
@@ -436,21 +407,22 @@ function initModal() {
     card.label       = document.getElementById('card-label').value;
 
     card.checklist = [];
-    document.querySelectorAll('#checklist-items .checklist-item').forEach(li => {
-      const cb  = li.querySelector('.checklist-checkbox');
-      const lbl = li.querySelector('.checklist-item-label');
-      card.checklist.push({ text: lbl.textContent.trim(), done: cb.checked });
+    document.querySelectorAll('#checklist-items .checklist-item').forEach(function(li) {
+      card.checklist.push({
+        text: li.querySelector('.checklist-item-label').textContent.trim(),
+        done: li.querySelector('.checklist-checkbox').checked
+      });
     });
 
-    try { saveState(state); } catch (_) {}
-    renderBoard(state);
+    saveState(window._tbState);
+    renderBoard(window._tbState);
     if (typeof applyFilter === 'function') applyFilter();
     close();
-    announce(`Card "${title}" saved.`);
+    announce('Card "' + title + '" saved.');
   });
 
-  const submitNewItem = () => {
-    const text = newItemInp.value.trim();
+  function submitNewItem() {
+    var text = newItemInp.value.trim();
     if (!text) {
       newItemErr.textContent = 'Enter item text.';
       newItemInp.focus();
@@ -460,15 +432,15 @@ function initModal() {
     addChecklistItem(text, false);
     newItemInp.value = '';
     newItemInp.focus();
-  };
+  }
 
   addItemBtn.addEventListener('click', submitNewItem);
-  newItemInp.addEventListener('keydown', e => {
+  newItemInp.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') { e.preventDefault(); submitNewItem(); }
   });
 }
 
-/* ── search.js ────────────────────────────────────────────────────────────── */
+/* ── Search & Filter ── */
 
 function initSearch(onChange) {
   document.getElementById('search-input').addEventListener('input', onChange);
@@ -476,43 +448,34 @@ function initSearch(onChange) {
 }
 
 function applyFilter() {
-  const query    = document.getElementById('search-input').value.toLowerCase().trim();
-  const priority = document.getElementById('priority-filter').value;
+  var query    = document.getElementById('search-input').value.toLowerCase().trim();
+  var priority = document.getElementById('priority-filter').value;
 
-  document.querySelectorAll('.card').forEach(cardEl => {
-    const state = window._tbState;
-    let card = null;
-    state.lists.forEach(l => {
-      const found = l.cards.find(c => c.id === cardEl.dataset.cardId);
-      if (found) card = found;
-    });
+  document.querySelectorAll('.card').forEach(function(cardEl) {
+    var card = findCard(cardEl.dataset.cardId);
     if (!card) return;
-
-    const matchQuery    = !query    || card.title.toLowerCase().includes(query)
-                                    || (card.description || '').toLowerCase().includes(query);
-    const matchPriority = !priority || card.priority === priority;
-
-    cardEl.classList.toggle('card-hidden', !(matchQuery && matchPriority));
+    var matchesQuery    = !query || card.title.toLowerCase().includes(query) || (card.description || '').toLowerCase().includes(query);
+    var matchesPriority = !priority || card.priority === priority;
+    cardEl.classList.toggle('card-hidden', !(matchesQuery && matchesPriority));
   });
 }
 
-/* ── theme.js ─────────────────────────────────────────────────────────────── */
+/* ── Theme ── */
 
 function initTheme() {
-  const btn = document.getElementById('theme-toggle');
+  var btn = document.getElementById('theme-toggle');
   if (!btn) return;
-
-  btn.addEventListener('click', () => {
-    const root = document.documentElement;
-    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    root.setAttribute('data-theme', next);
-    localStorage.setItem('tb-theme', next);
+  btn.addEventListener('click', function() {
+    var root      = document.documentElement;
+    var nextTheme = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', nextTheme);
+    localStorage.setItem('tb-theme', nextTheme);
   });
 }
 
-/* ── main.js ──────────────────────────────────────────────────────────────── */
+/* ── App Start ── */
 
-const state = loadState();
+var state = loadState();
 renderBoard(state);
 initAddListForm();
 initModal();
