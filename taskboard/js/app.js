@@ -1,4 +1,5 @@
 var STORAGE_KEY = 'tb-state';
+var _drag = { cardId: null };
 
 function loadState() {
   var raw = localStorage.getItem(STORAGE_KEY);
@@ -13,7 +14,7 @@ function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
-function esc(str) {
+function esc(str) {    // Cross-Site Scripting) //
   var div = document.createElement('div');
   div.textContent = String(str);
   return div.innerHTML;
@@ -66,6 +67,21 @@ function buildCardEl(card) {
   }
 
   art.innerHTML = html;
+  art.draggable = true;
+
+  art.addEventListener('dragstart', function(e) {
+    _drag.cardId = card.id;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', card.id);
+    requestAnimationFrame(function() { art.classList.add('is-dragging'); });
+  });
+
+  art.addEventListener('dragend', function() {
+    art.classList.remove('is-dragging');
+    document.querySelectorAll('.drop-indicator').forEach(function(el) { el.remove(); });
+    document.querySelectorAll('.list-cards').forEach(function(el) { el.classList.remove('drag-over'); });
+  });
+
   art.addEventListener('click', function() { openCardModal(card.id); });
   art.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCardModal(card.id); }
@@ -246,7 +262,89 @@ function buildListEl(list) {
 
   wireAddCard(sec, list);
   wireListMenu(sec, list);
+  wireDropZone(sec, list);
   return sec;
+}
+
+/* ── Drag & Drop ── */
+
+function getDragAfterElement(container, y) {
+  var cards = Array.from(container.querySelectorAll('.card:not(.is-dragging)'));
+  var result = null;
+  var closest = Infinity;
+  cards.forEach(function(el) {
+    var box = el.getBoundingClientRect();
+    var offset = y - (box.top + box.height / 2);
+    if (offset < 0 && -offset < closest) {
+      closest = -offset;
+      result = el;
+    }
+  });
+  return result;
+}
+
+function wireDropZone(listEl, list) {
+  var container = listEl.querySelector('.list-cards');
+
+  container.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    var after = getDragAfterElement(container, e.clientY);
+    var existing = container.querySelector('.drop-indicator');
+    if (existing) existing.remove();
+    var indicator = document.createElement('div');
+    indicator.className = 'drop-indicator';
+    if (!after) { container.appendChild(indicator); }
+    else { container.insertBefore(indicator, after); }
+    container.classList.add('drag-over');
+  });
+
+  container.addEventListener('dragleave', function(e) {
+    if (!container.contains(e.relatedTarget)) {
+      container.classList.remove('drag-over');
+      var ind = container.querySelector('.drop-indicator');
+      if (ind) ind.remove();
+    }
+  });
+
+  container.addEventListener('drop', function(e) {
+    e.preventDefault();
+    container.classList.remove('drag-over');
+    var ind = container.querySelector('.drop-indicator');
+    if (ind) ind.remove();
+    if (!_drag.cardId) return;
+
+    var afterEl = getDragAfterElement(container, e.clientY);
+    var afterCardId = afterEl ? afterEl.dataset.cardId : null;
+    var state = window._tbState;
+    var card = null;
+
+    state.lists.forEach(function(l) {
+      var idx = -1;
+      l.cards.forEach(function(c, i) { if (c.id === _drag.cardId) idx = i; });
+      if (idx !== -1) { card = l.cards.splice(idx, 1)[0]; }
+    });
+
+    if (!card) return;
+
+    var destList = null;
+    state.lists.forEach(function(l) { if (l.id === list.id) destList = l; });
+    if (!destList) return;
+
+    if (afterCardId) {
+      var afterIdx = -1;
+      destList.cards.forEach(function(c, i) { if (c.id === afterCardId) afterIdx = i; });
+      if (afterIdx !== -1) { destList.cards.splice(afterIdx, 0, card); }
+      else { destList.cards.push(card); }
+    } else {
+      destList.cards.push(card);
+    }
+
+    saveState(state);
+    renderBoard(state);
+    if (typeof applyFilter === 'function') applyFilter();
+    announce('Card moved to "' + destList.title + '".');
+  });
 }
 
 function renderBoard(state) {
